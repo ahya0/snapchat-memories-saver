@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
+*.zip
+*.part
+/exports/
+/reports/
+/snapchat-audit-*/
+/LAUNCH.md
