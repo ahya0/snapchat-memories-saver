@@ -16,8 +16,13 @@ OVERLAY = "2024-01-01_AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA-overlay.png"
 
 
 def main() -> int:
-    with tempfile.TemporaryDirectory() as directory:
+    with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory(
+        prefix="sms-v02-fixture-report-",
+        dir="/private/tmp",
+    ) as output_directory:
         base = Path(os.path.realpath(directory))
+        output = Path(os.path.realpath(output_directory))
+        output.rmdir()
         export = base / "synthetic-export"
         memories = export / "memories"
         history_dir = export / "json"
@@ -45,7 +50,6 @@ def main() -> int:
         (memories / "memories.html").write_text(
             f'<img src=".//{IMAGE}"><img src=".//{OVERLAY}">', encoding="utf-8"
         )
-        output = base / "audit-report"
         result = subprocess.run(
             [
                 sys.executable,
@@ -62,7 +66,14 @@ def main() -> int:
             print(result.stdout + result.stderr, file=sys.stderr)
             return result.returncode
         summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
-        expected = {"summary.json", "manifest.csv", "missing_history_records.csv", "report.txt"}
+        expected = {
+            "start_here.html",
+            "summary.json",
+            "manifest.csv",
+            "missing_history_records.csv",
+            "report.txt",
+            "support.txt",
+        }
         if summary.get("status") != "complete" or {path.name for path in output.iterdir()} != expected:
             print("fixture audit did not produce the expected complete report", file=sys.stderr)
             return 1

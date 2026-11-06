@@ -4,7 +4,7 @@ These notes describe formats observed in user-downloaded Snapchat My Data export
 
 ## Acquisition boundary
 
-Version 0.1 begins with one or more directories that the user already extracted with macOS Archive Utility or Finder. It does not accept URLs, open ZIPs, download data, or extract archives. Because the original ZIP is outside the tool's scope, ZIP integrity is not tested.
+The skill begins with one or more directories that the user already extracted with macOS Archive Utility or Finder. It does not accept URLs, open ZIPs, download data, or extract archives. Because the original ZIP is outside the tool's scope, ZIP integrity is not tested.
 
 A multi-part export may place `memories_history.json` in only one extracted
 part. Pass every part as a separate `--export`; media-only parts are valid as
@@ -101,3 +101,24 @@ CSV output neutralizes cells whose first non-whitespace character is `=`, `+`, `
 ## Output interpretation
 
 A complete report means the supplied extracted directories reconcile internally under these rules. It does not prove that Snapchat included every Memory, that the original ZIP was intact, or that every image pixel/video frame decodes. Hashes and nonempty checks are byte-level evidence only.
+
+The private report directory contains six files:
+
+- `start_here.html`: a simple success or recovery page. For incomplete exports it lists dates/media types for unmatched history rows, shows counts for other gaps, and links only to Snapchat's official export and help pages.
+- `summary.json`: machine-readable counts and status.
+- `manifest.csv`: the local media inventory and matches.
+- `missing_history_records.csv`: history entries without matching media.
+- `report.txt`: a concise text summary.
+- `support.txt`: tool version and aggregate counts without paths, filenames, hashes, Memory timestamps, locations, or media.
+
+The recovery page does not retain per-Memory download URLs. Export links may be temporary and private. Retry exports should be supplied together with the original parts; repeated identical files are counted once.
+
+Before scanning, the tool checks a fixed free-space reserve on the report destination filesystem. After building and privacy-validating all encoded payloads in memory, it checks their block-rounded size plus a reserve again before creating the private staging directory. These checks cannot reserve disk space, so ENOSPC and other write failures still abort publication and clean the unpublished stage.
+
+Output containment is verified with directory device/inode identities, not path spelling alone, so case-only or Unicode-normalization aliases on macOS cannot place a report inside an export. The report parent and its parent must be system-owned and have no extended ACL. The parent of the report parent must also be non-writable by the current user. The guided launcher therefore publishes directly under `/Users/Shared`; home-folder and nested output parents are rejected. These checks close ordinary mode-bit and ACL-based same-user relocation of the output parent. Metadata and media reads are bounded to their accepted sizes and compare device, inode, link count, size, modification time, and change time before and after reading. Changes detected during reading or final revalidation are rejected. The report describes the evidence as read during the audit. It is point-in-time validation, not an atomic filesystem snapshot, so selected exports must not be modified concurrently.
+
+The CLI uses stable privacy-safe statuses and `SMS-E-*` codes: `0` complete, `3` incomplete, `64` usage, `65` rejected input, `73` unavailable output, `74` local I/O failure, and `70` contained internal failure. The guided launcher also returns `130` for user cancellation without creating a report. The `.command` wrapper returns `69` when Python 3.9 or newer is unavailable. Argument parser errors and exceptions never echo the supplied value or underlying exception text.
+
+Input regular files with more than one hard link are rejected so a selected export cannot silently reference bytes outside its root. History records are parsed one at a time and HTML references have a global count limit before report evidence is retained.
+
+The report becomes authoritative at the final exclusive directory rename. All source and destination checks, input revalidation, file synchronization, and parent synchronization happen before that rename. A parent-descriptor close follows publication, but any close error is contained so it cannot turn a successfully published report into a reported failure. Interrupted unpublished cleanup retries once, scrubs staged regular-file bytes before unlinking, and preserves the primary audit failure. Unsupported destination filesystems fail with `SMS-E-OUTPUT` before a report is published.
